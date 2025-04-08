@@ -1,0 +1,403 @@
+---
+title: "GISAID Data Analisys"
+author: "César A. Navarrete M."
+date: "2024-08-08"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    dr_print: paged
+    code_folding: show
+---
+
+# Instalation
+Install packages and load necessary libraries
+
+tidyverse, viridis, reshape2, ggsci and another 'aes' libraries
+
+
+```{r, include=FALSE}
+#install.packages("ggplot2")
+#install.packages("viridis") # Para la escala de colores perceptualmente uniforme
+#install.packages("tidyverse")
+#install.packages("reshape2")
+#install.packages("ggpattern")
+#install.packages("ggsci")
+#install.packages("readr")
+
+
+library(ggpattern)
+library(ggplot2)
+library(tidyverse)
+library(viridis)
+library(reshape2)
+library(ggsci)
+library(readr)
+
+```
+
+## Load Meta Data
+Download metadata data were performed using EpiCOV service en GISAID: tsv format
+
+Load to GISAID credentials
+
+Select EpiCoV option and pick in Downloads 
+
+Select Global Epidemiology / Custom Selection:
+    - Location
+    - Collection
+    - Clade
+    - Host
+    - etc
+    
+  Consulting GISAID for complete epidemiology parametres
+  
+
+```{r, include=FALSE}
+metadata <- read_tsv("C:/Users/chech/OneDrive/Escritorio/GISAID METADATA/1723150516741.metadata.tsv")
+
+#head(metadata)
+ncol(metadata)
+
+```
+
+Using 'dplyr' por fitered interesting data
+Example:
+
+```{r, include=FALSE}
+
+metadata_filtered <- metadata %>%
+  select(age, sex, pangolin_lineage, date)
+```
+
+```{r, include=FALSE}
+metadata_filtered
+```
+
+Clean rows "unknown"
+Use apply() funtion
+
+```{r,include=FALSE}
+
+# Eliminar filas que contienen "unknown" en cualquier columna
+metadata_clean <- metadata_filtered[!apply(metadata, 1, function(row) any(row == "unknown")), ]
+
+
+# Mostrar las primeras filas del dataframe limpio
+head(metadata_clean)
+```
+Clean columns
+Explore columns, then change values "imputation" if is necesary delete all rows
+```{r, include=FALSE}
+ncol(metadata_clean)
+metadata_clean <- na.omit(metadata_clean)
+```
+
+Unification ages
+
+```{r, include=FALSE}
+#Necesitamos limpiar las filas 
+metadata_clean$age
+
+rows_months <- grep("months", metadata_clean$age, ignore.case = TRUE)
+rows_months
+
+# Índices de las filas que quieres seleccionar
+indices <- c(rows_months)
+
+# Seleccionar las filas específicas del dataframe
+selected_rows <- metadata_clean[indices, ]
+
+# Mostrar las filas seleccionadas
+print(selected_rows)
+
+# Valor antiguo y nuevo
+old_value <- "7 months"
+new_value <- 7/12
+
+# Encontrar el índice del valor específico en la columna 'age'
+index_to_modify <- which(metadata_clean$age == old_value)
+
+# Modificar el valor en la columna 'age'
+metadata_clean$age[index_to_modify] <- new_value
+
+# Valor antiguo y nuevo
+old_value <- "4 months"
+new_value <- 4/12
+
+# Encontrar el índice del valor específico en la columna 'age'
+index_to_modify <- which(metadata_clean$age == old_value)
+
+# Modificar el valor en la columna 'age'
+metadata_clean$age[index_to_modify] <- new_value
+
+# Valor antiguo y nuevo
+old_value <- "11 months"
+new_value <- 11/12
+
+# Encontrar el índice del valor específico en la columna 'age'
+index_to_modify <- which(metadata_clean$age == old_value)
+
+# Modificar el valor en la columna 'age'
+metadata_clean$age[index_to_modify] <- new_value
+
+```
+
+```{r}
+metadata_clean
+```
+
+
+### Data Visualization
+
+Histogram
+
+```{r, include=FALSE}
+str(metadata_clean)
+# Convertir 'age' a numérico si es necesario
+metadata_clean$age <- as.numeric(as.character(metadata_clean$age))
+
+# Verificar el tipo de datos
+str(metadata_clean$age)
+
+```
+
+
+```{r}
+help("scale_fill-viridis")
+```
+
+
+```{r}
+
+# Crear un histograma de edades
+ggplot(metadata_clean, aes(x = age)) +
+  geom_histogram(binwidth = 4, color = "black", fill = "lightblue") +
+  labs(title = "Distribution of Ages", x = "Age", y = "Frecuency") +
+  theme_light()+
+  theme(
+      plot.title = element_text(face = "bold", vjust = 2, hjust = 0.5), # Centrar el título del gráfico
+      axis.title = element_text(face = "bold"), # Negrita en títulos de ejes
+      #legend.title = element_text(face = "bold", size = 9),
+      scale_fill_simpsons()
+  )
+```
+
+Sex Distrtibution
+
+```{r}
+# Crear un gráfico de barras para la distribución por sexo
+ggplot(metadata_clean, aes(x = age, fill = sex)) +
+  geom_histogram(binwidth = 4, color = "black") +
+  labs(title = "Distribution of Gender", x = "Gender", y = "Frecuency", fill = "Gender") +
+  theme_light()+
+  theme(
+      plot.title = element_text(face = "bold", vjust = 2, hjust = 0.5), # Centrar el título del gráfico
+      axis.title = element_text(face = "bold"), # Negrita en títulos de ejes
+      legend.title = element_text(face = "bold", size = 9),
+  )+ 
+  scale_fill_simpsons()
+  
+
+```
+
+Linajes Distribution
+
+```{r}
+# Crear un gráfico de barras para la distribución de linajes
+ggplot(metadata_clean, aes(x = pangolin_lineage)) +
+  geom_bar(fill = "lightgreen", color = "black") +
+  labs(title = "Distribution of SARS-CoV-2 pango lineages", x = "Linage", y = "Frecuency") +
+  theme_light()+
+  theme(
+      plot.title = element_text(face = "bold", vjust = 2, hjust = 0.5), # Centrar el título del gráfico
+      axis.title = element_text(face = "bold"), # Negrita en títulos de ejes
+      axis.text.x = element_text(angle = 45, vjust = 0.5, face = "bold", size = 7) 
+  )
+
+```
+
+Relationship Sex and Age
+
+```{r}
+# Crear un gráfico de caja para la edad por sexo
+ggplot(metadata_clean, aes(x = sex, y = age, fill = sex)) +
+  geom_boxplot(color = "black", position = "dodge", alpha = 0.8, width = 0.5) +
+  labs(title = "Distribution the ages per gender", x = "Gender", y = "Age", fill = "Gender") + 
+  theme_light()+
+  theme(
+      plot.title = element_text(face = "bold", vjust = 2, hjust = 0.5), # Centrar el título del gráfico
+      axis.title = element_text(face = "bold"), # Negrita en títulos de ejes
+      axis.text.x = element_text(face = "bold"),
+      legend.title = element_text(face = "bold", size = 9),
+  ) + 
+  geom_jitter(alpha = 0.4, size = 0.5) + 
+  
+  scale_fill_simpsons()
+
+```
+```{r}
+
+p <- ggplot(metadata_clean, aes(x = age, fill = sex, color = sex))
+p + geom_density(alpha = 0.3)
+
+p
+
+```
+
+
+Linages per Age Distribution
+
+```{r}
+# Crear un gráfico de caja para la edad por linaje
+ggplot(metadata_clean, aes(x = pangolin_lineage, y = age, fill = pangolin_lineage)) +
+   geom_boxplot(color = "black", position = "dodge", alpha = 0.8, width = 0.5) +
+  labs(title = "Distribution the ages per gender", x = "Gender", y = "Age", fill = "pango linage") + 
+  theme_light()+
+  theme(
+      plot.title = element_text(face = "bold", vjust = 2, hjust = 0.5), # Centrar el título del gráfico
+      axis.title = element_text(face = "bold"), # Negrita en títulos de ejes
+      axis.text.x = element_text(angle = 45, vjust = 0.5, size = 6),
+      legend.title = element_text(face = "bold", size = 9),
+      legend.key.size = unit(0.4, "cm")
+  ) + 
+  geom_jitter(alpha = 0.4, size = 0.5) + 
+  
+  scale_fill_simpsons()
+```
+
+Linajes per Date Distribution
+
+To Observe linajes distribution in time. Can use this plot in sckatter or bar
+
+
+```{r, include=FALSE}
+# Cargar el paquete lubridate si no está cargado
+library(lubridate)
+
+# Convertir la columna 'date' a formato Date
+metadata_clean$date <- ymd(metadata_clean$date)
+```
+
+```{r, include=FALSE}
+# Agrupar por fecha y linaje
+data_grouped <- metadata_clean %>%
+  group_by(date, pangolin_lineage) %>%
+  summarise(count = n(), .groups = 'drop')
+
+```
+
+
+```{r}
+
+# Crear un gráfico de líneas para linajes
+ggplot(data_grouped, aes(x = date, y = count, fill = pangolin_lineage)) +
+  geom_area( position = "fill", aplha = 2) + 
+  theme_light()+
+  theme(
+      plot.title = element_text(face = "bold", vjust = 2, hjust = 0.5), # Centrar el título del gráfico
+      axis.title = element_text(face = "bold"), # Negrita en títulos de ejes
+      axis.text.x = element_text(angle = 45, vjust = 0.5, size = 6),
+      legend.title = element_text(face = "bold", size = 9),
+      legend.key.size = unit(0.4, "cm")
+  ) + 
+  #scale_y_continuous( label = percent) + 
+  scale_fill_simpsons()
+```
+
+Linaje frecnecy monthly
+
+
+```{r, include=FALSE}
+# Agrupar por mes y linaje
+data_monthly <- metadata_clean %>%
+  mutate(month = floor_date(date, "month")) %>%
+  group_by(month, pangolin_lineage) %>%
+  summarise(count = n(), .groups = 'drop')
+
+```
+
+Lineage Relative Frequencies Over Time
+
+```{r,  include=FALSE}
+# Calcular el total de muestras por fecha
+data_total <- data_grouped %>%
+  group_by(date) %>%
+  summarise(total_count = sum(count), .groups = 'drop')
+
+# Unir con el dataframe agrupado
+data_grouped <- data_grouped %>%
+  left_join(data_total, by = "date") %>%
+  mutate(relative_frequency = count / total_count)
+```
+
+
+```{r}
+# Crear un gráfico de líneas para frecuencias relativas de linajes
+ggplot(data_grouped, aes(x = date, y = relative_frequency, fill = pangolin_lineage)) +
+  geom_area(alpha = 0.8) +  # Usar geom_area para crear el gráfico de áreas
+  #geom_smooth(method = "loess", se = FALSE)
+  labs(
+    title = "Frecuencias Relativas de Linajes a lo Largo del Tiempo",
+    x = "Fecha",
+    y = "Frecuencia Relativa"
+  ) +
+  theme_light()+
+  theme(
+      plot.title = element_text(face = "bold", vjust = 2, hjust = 0.5), # Centrar el título del gráfico
+      axis.title = element_text(face = "bold"), # Negrita en títulos de ejes
+      axis.text.x = element_text(angle = 45, vjust = 0.5, size = 6),
+      legend.title = element_text(face = "bold", size = 9),
+      legend.key.size = unit(0.4, "cm")
+  ) + 
+  scale_fill_simpsons()
+  #coord_cartesian(ylim = c(0, 1))  # Ajustar el rango del eje y si es necesario
+
+```
+
+
+```{r}
+
+# Line plot with faceting
+ggplot(data_grouped, aes(x = date, y = count, fill = pangolin_lineage, group = pangolin_lineage)) +
+  geom_area(position = "fill", alpha = 0.6) +
+  coord_flip() + 
+  labs(title = "Monthly Distribution of Major SARS-CoV-2 Pango Lineages",
+       x = "Date",
+       y = "Count",
+       color = "Pango Lineage") +
+  theme_light() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, vjust = 0.5),
+    legend.title = element_text(face = "bold")
+  ) + 
+ scale_fill_d3()
+
+```
+
+
+```{r}
+ggplot(data_grouped, aes(x = date, y = relative_frequency, fill = pangolin_lineage)) +
+  geom_bar(stat = "identity", position = "fill", width = 1, color = "black") + 
+  coord_flip() + 
+  theme_light()+
+  theme(
+      plot.title = element_text(face = "bold", vjust = 2, hjust = 0.5), # Centrar el título del gráfico
+      axis.title = element_text(face = "bold"), # Negrita en títulos de ejes
+      axis.text.x = element_text(angle = 45, vjust = 0.5, size = 6),
+      legend.title = element_text(face = "bold", size = 9),
+      legend.key.size = unit(0.4, "cm")
+  ) + 
+  #scale_y_continuous( label = percent) + 
+  scale_fill_simpsons()
+```
+```
+
+
